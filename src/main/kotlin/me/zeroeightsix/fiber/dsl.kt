@@ -102,15 +102,29 @@ fun <T> ConfigValueBuilder<T>.constrained(builder: (@FiberDslMarker ConstraintsB
 /**
  * @see ConstraintsBuilder.minNumerical
  */
-fun <T: Number> AbstractConstraintsBuilder<T>.min(lambda: () -> T) {
-    addNumericalLowerBound(lambda())
+fun <T: Number> AbstractConstraintsBuilder<T, *>.biggerThan(lambda: () -> T) {
+    biggerThan(lambda())
 }
 
 /**
  * @see ConstraintsBuilder.maxNumerical
  */
-fun <T: Number> AbstractConstraintsBuilder<T>.max(lambda: () -> T) {
-    addNumericalUpperBound(lambda())
+fun <T: Number> AbstractConstraintsBuilder<T, *>.smallerThan(lambda: () -> T) {
+    smallerThan(lambda())
+}
+
+// Char sequence constraints
+
+fun <T: CharSequence> AbstractConstraintsBuilder<T, *>.minLength(lambda: () -> Int) {
+    minStringLength(lambda())
+}
+
+fun <T: CharSequence> AbstractConstraintsBuilder<T, *>.maxLength(lambda: () -> Int) {
+    maxStringLength(lambda())
+}
+
+fun <T: CharSequence> AbstractConstraintsBuilder<T, *>.matchesRegex(lambda: () -> String) {
+    regex(lambda())
 }
 
 //// Top-level constraints (because we don't allow composites in composites)

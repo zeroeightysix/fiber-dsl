@@ -20,8 +20,8 @@ internal class DslKtTest {
                 name { "Baz" }
                 constrained {
                     or {
-                        min { 5 }
-                        max { 0 }
+                        biggerThan { 5 }
+                        smallerThan { 0 }
                     }
                 }
             }
