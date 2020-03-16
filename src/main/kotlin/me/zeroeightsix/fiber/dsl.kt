@@ -18,6 +18,9 @@ fun node(name: String? = null, comment: String? = null, serializeSeparately: Boo
 
 // Values
 
+/**
+ * @see ConfigValue
+ */
 inline fun <reified T> ConfigNode.value(builder: (@FiberDslMarker ConfigValueBuilder<T>).() -> Unit): ConfigValue<T> {
     return ConfigValueBuilder(T::class.java)
         .withParent(this)
@@ -25,42 +28,69 @@ inline fun <reified T> ConfigNode.value(builder: (@FiberDslMarker ConfigValueBui
         .build()
 }
 
+/**
+ * @see ConfigValueBuilder.withName
+ */
 fun <T> ConfigValueBuilder<T>.name(lambda: () -> String) {
     withName(lambda())
 }
 
+/**
+ * @see ConfigValueBuilder.withComment
+ */
 fun <T> ConfigValueBuilder<T>.comment(lambda: () -> String) {
     withComment(lambda())
 }
 
+/**
+ * @see ConfigValueBuilder.withListener
+ */
 fun <T> ConfigValueBuilder<T>.listener(lambda: (T, T) -> Unit) {
     withListener(lambda)
 }
 
+/**
+ * @see ConfigValueBuilder.withListener
+ */
 fun <T> ConfigValueBuilder<T>.listener(lambda: (T) -> Unit) {
     withListener { _, value ->
         lambda(value)
     }
 }
 
+/**
+ * @see ConfigValueBuilder.withDefaultValue
+ */
 fun <T> ConfigValueBuilder<T>.defaultValue(lambda: () -> T) {
     withDefaultValue(lambda())
 }
 
+/**
+ * @see ConfigValueBuilder.withParent
+ */
 fun <T> ConfigValueBuilder<T>.parent(lambda: () -> Node) {
     withParent(lambda())
 }
 
+/**
+ * @see ConfigValueBuilder.final
+ */
 fun <T> ConfigValueBuilder<T>.final() {
     final(true)
 }
 
+/**
+ * @see ConfigValueBuilder.setFinal
+ */
 fun <T> ConfigValueBuilder<T>.final(final: Boolean) {
     setFinal(final)
 }
 
 //// Generic constraints
 
+/**
+ * @see ConfigValueBuilder.constraints
+ */
 fun <T> ConfigValueBuilder<T>.constrained(builder: (@FiberDslMarker ConstraintsBuilder<T>).() -> Unit) {
     constraints()
         .apply(builder)
@@ -69,16 +99,25 @@ fun <T> ConfigValueBuilder<T>.constrained(builder: (@FiberDslMarker ConstraintsB
 
 // Numerical constraints
 
+/**
+ * @see ConstraintsBuilder.minNumerical
+ */
 fun <T: Number> AbstractConstraintsBuilder<T>.min(lambda: () -> T) {
     addNumericalLowerBound(lambda())
 }
 
+/**
+ * @see ConstraintsBuilder.maxNumerical
+ */
 fun <T: Number> AbstractConstraintsBuilder<T>.max(lambda: () -> T) {
     addNumericalUpperBound(lambda())
 }
 
 //// Top-level constraints (because we don't allow composites in composites)
 
+/**
+ * @see ConstraintsBuilder.composite
+ */
 fun <T> ConstraintsBuilder<T>.composite(type: CompositeType, lambda: CompositeConstraintBuilder<T>.() -> Unit) {
     composite(type)
         .apply(lambda)
