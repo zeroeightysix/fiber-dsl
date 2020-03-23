@@ -18,11 +18,18 @@ fun node(name: String? = null, comment: String? = null, serializeSeparately: Boo
 
 // Values
 
+inline fun <reified E, reified T: Collection<E>> ConfigNode.aggregate(builder: (@FiberDslMarker ConfigValueBuilder<T, *>).() -> Unit): ConfigValue<T> {
+    return ConfigValueBuilder.aggregate(T::class.java, E::class.java)
+        .withParent(this)
+        .apply(builder)
+        .build()
+}
+
 /**
- * @see ConfigValue
+ * @see ConfigValueBuilder.scalar
  */
-inline fun <reified T> ConfigNode.value(builder: (@FiberDslMarker ConfigValueBuilder<T>).() -> Unit): ConfigValue<T> {
-    return ConfigValueBuilder(T::class.java)
+inline fun <reified T> ConfigNode.scalar(builder: (@FiberDslMarker ConfigValueBuilder<T, *>).() -> Unit): ConfigValue<T> {
+    return ConfigValueBuilder.scalar(T::class.java)
         .withParent(this)
         .apply(builder)
         .build()
@@ -31,28 +38,28 @@ inline fun <reified T> ConfigNode.value(builder: (@FiberDslMarker ConfigValueBui
 /**
  * @see ConfigValueBuilder.withName
  */
-fun <T> ConfigValueBuilder<T>.name(lambda: () -> String) {
+fun <T> ConfigValueBuilder<T, *>.name(lambda: () -> String) {
     withName(lambda())
 }
 
 /**
  * @see ConfigValueBuilder.withComment
  */
-fun <T> ConfigValueBuilder<T>.comment(lambda: () -> String) {
+fun <T> ConfigValueBuilder<T, *>.comment(lambda: () -> String) {
     withComment(lambda())
 }
 
 /**
  * @see ConfigValueBuilder.withListener
  */
-fun <T> ConfigValueBuilder<T>.listener(lambda: (T, T) -> Unit) {
+fun <T> ConfigValueBuilder<T, *>.listener(lambda: (T, T) -> Unit) {
     withListener(lambda)
 }
 
 /**
  * @see ConfigValueBuilder.withListener
  */
-fun <T> ConfigValueBuilder<T>.listener(lambda: (T) -> Unit) {
+fun <T> ConfigValueBuilder<T, *>.listener(lambda: (T) -> Unit) {
     withListener { _, value ->
         lambda(value)
     }
@@ -61,28 +68,28 @@ fun <T> ConfigValueBuilder<T>.listener(lambda: (T) -> Unit) {
 /**
  * @see ConfigValueBuilder.withDefaultValue
  */
-fun <T> ConfigValueBuilder<T>.defaultValue(lambda: () -> T) {
+fun <T> ConfigValueBuilder<T, *>.defaultValue(lambda: () -> T) {
     withDefaultValue(lambda())
 }
 
 /**
  * @see ConfigValueBuilder.withParent
  */
-fun <T> ConfigValueBuilder<T>.parent(lambda: () -> Node) {
+fun <T> ConfigValueBuilder<T, *>.parent(lambda: () -> Node) {
     withParent(lambda())
 }
 
 /**
  * @see ConfigValueBuilder.final
  */
-fun <T> ConfigValueBuilder<T>.final() {
+fun <T> ConfigValueBuilder<T, *>.final() {
     final(true)
 }
 
 /**
  * @see ConfigValueBuilder.setFinal
  */
-fun <T> ConfigValueBuilder<T>.final(final: Boolean) {
+fun <T> ConfigValueBuilder<T, *>.final(final: Boolean) {
     setFinal(final)
 }
 
@@ -91,7 +98,7 @@ fun <T> ConfigValueBuilder<T>.final(final: Boolean) {
 /**
  * @see ConfigValueBuilder.constraints
  */
-fun <T> ConfigValueBuilder<T>.constrained(builder: (@FiberDslMarker ConstraintsBuilder<T>).() -> Unit) {
+fun <T> ConfigValueBuilder<T, *>.constrained(builder: (@FiberDslMarker ConstraintsBuilder<*, T, *>).() -> Unit) {
     constraints()
         .apply(builder)
         .finish()
@@ -100,31 +107,49 @@ fun <T> ConfigValueBuilder<T>.constrained(builder: (@FiberDslMarker ConstraintsB
 // Numerical constraints
 
 /**
- * @see ConstraintsBuilder.minNumerical
+ * @see ConstraintsBuilder.atLeast
  */
-fun <T: Number> AbstractConstraintsBuilder<T, *>.biggerThan(lambda: () -> T) {
-    biggerThan(lambda())
+fun <T: Number> AbstractConstraintsBuilder<*, T, T, *>.atLeast(lambda: () -> T) {
+    atLeast(lambda())
 }
 
 /**
- * @see ConstraintsBuilder.maxNumerical
+ * @see ConstraintsBuilder.atMost
  */
-fun <T: Number> AbstractConstraintsBuilder<T, *>.smallerThan(lambda: () -> T) {
-    smallerThan(lambda())
+fun <T: Number> AbstractConstraintsBuilder<*, T, T, *>.atMost(lambda: () -> T) {
+    atMost(lambda())
 }
 
 // Char sequence constraints
 
-fun <T: CharSequence> AbstractConstraintsBuilder<T, *>.minLength(lambda: () -> Int) {
-    minStringLength(lambda())
+fun <T: CharSequence> AbstractConstraintsBuilder<*, T, T, *>.minLength(lambda: () -> Int) {
+    minLength(lambda())
 }
 
-fun <T: CharSequence> AbstractConstraintsBuilder<T, *>.maxLength(lambda: () -> Int) {
-    maxStringLength(lambda())
+fun <T: CharSequence> AbstractConstraintsBuilder<*, T, T, *>.maxLength(lambda: () -> Int) {
+    maxLength(lambda())
 }
 
-fun <T: CharSequence> AbstractConstraintsBuilder<T, *>.matchesRegex(lambda: () -> String) {
+fun <T: CharSequence> AbstractConstraintsBuilder<*, T, T, *>.matchesRegex(lambda: () -> String) {
     regex(lambda())
+}
+
+// Aggregate constraints
+
+fun <T: Collection<*>> AbstractConstraintsBuilder<*, T, T, *>.minCollectionSize(lambda: () -> Int) {
+    minLength(lambda())
+}
+
+fun <T: Collection<*>> AbstractConstraintsBuilder<*, T, T, *>.maxCollectionSize(lambda: () -> Int) {
+    maxLength(lambda())
+}
+
+fun AbstractConstraintsBuilder<*, Array<*>, Array<*>, *>.minArrayLength(lambda: () -> Int) {
+    minLength(lambda())
+}
+
+fun AbstractConstraintsBuilder<*, Array<*>, Array<*>, *>.maxArrayLength(lambda: () -> Int) {
+    maxLength(lambda())
 }
 
 //// Top-level constraints (because we don't allow composites in composites)
@@ -132,19 +157,19 @@ fun <T: CharSequence> AbstractConstraintsBuilder<T, *>.matchesRegex(lambda: () -
 /**
  * @see ConstraintsBuilder.composite
  */
-fun <T> ConstraintsBuilder<T>.composite(type: CompositeType, lambda: CompositeConstraintBuilder<T>.() -> Unit) {
+fun <T> ConstraintsBuilder<*, T, *>.composite(type: CompositeType, lambda: (@FiberDslMarker CompositeConstraintBuilder<*, T>).() -> Unit) {
     composite(type)
         .apply(lambda)
         .finishComposite()
 }
 
-fun <T> ConstraintsBuilder<T>.and(lambda: CompositeConstraintBuilder<T>.() -> Unit) =
+fun <T> ConstraintsBuilder<*, T, *>.and(lambda: (@FiberDslMarker CompositeConstraintBuilder<*, T>).() -> Unit) =
     composite(CompositeType.AND, lambda)
 
-fun <T> ConstraintsBuilder<T>.or(lambda: CompositeConstraintBuilder<T>.() -> Unit) =
+fun <T> ConstraintsBuilder<*, T, *>.or(lambda: (@FiberDslMarker CompositeConstraintBuilder<*, T>).() -> Unit) =
     composite(CompositeType.OR, lambda)
 
-fun <T> ConstraintsBuilder<T>.invert(lambda: CompositeConstraintBuilder<T>.() -> Unit) =
+fun <T> ConstraintsBuilder<*, T, *>.invert(lambda: (@FiberDslMarker CompositeConstraintBuilder<*, T>).() -> Unit) =
     composite(CompositeType.INVERT, lambda)
 
 // The all-mighty dsl marker

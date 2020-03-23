@@ -1,6 +1,5 @@
 package me.zeroeightsix.fiber
 
-import me.zeroeightsix.fiber.tree.ConfigNode
 import me.zeroeightsix.fiber.tree.ConfigValue
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.DisplayName
@@ -16,12 +15,12 @@ internal class DslKtTest {
             comment = "Bar",
             serializeSeparately = false
         ) {
-            value<Int> {
+            scalar<Int> {
                 name { "Baz" }
                 constrained {
                     or {
-                        biggerThan { 5 }
-                        smallerThan { 0 }
+                        atLeast { 5 }
+                        atMost { 0 }
                     }
                 }
             }
@@ -35,11 +34,11 @@ internal class DslKtTest {
         node.items.firstOrNull()?.let {
             assertEquals("Baz", it.name, "Child name is correct")
 
-            val value = it as ConfigValue<Int>
+            it as ConfigValue<Int>
 
-            assertEquals(false, it.setValue(2), "Child constraints were applied correctly")
-            assertEquals(true, it.setValue(10), "Child constraints were applied correctly")
-            assertEquals(true, it.setValue(-5), "Child constraints were applied correctly")
+            assertFalse(it.setValue(2), "Child constraints were applied correctly")
+            assertTrue(it.setValue(10), "Child constraints were applied correctly")
+            assertTrue(it.setValue(-5), "Child constraints were applied correctly")
         }
     }
 
