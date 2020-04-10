@@ -10,13 +10,9 @@ internal class DslKtTest {
     @DisplayName("Test dsl-made node")
     @Test
     fun node() {
-        val node = node(
-            name = "Foo",
-            comment = "Bar",
-            serializeSeparately = false
-        ) {
-            scalar<Int> {
-                name { "Baz" }
+        val node = rootNode {
+            comment { "Bar" }
+            scalar<Int>("Baz") {
                 constrained {
                     or {
                         atLeast { 5 }
@@ -26,7 +22,6 @@ internal class DslKtTest {
             }
         }
 
-        assertEquals("Foo", node.name, "Node name is correct")
         assertEquals("Bar", node.comment, "Node comment is correct")
         assertEquals(false, node.isSerializedSeparately, "Node serialized separately property is correct")
 

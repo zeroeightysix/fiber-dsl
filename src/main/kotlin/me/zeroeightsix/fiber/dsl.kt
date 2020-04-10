@@ -1,26 +1,42 @@
 package me.zeroeightsix.fiber
 
+import me.zeroeightsix.fiber.builder.ConfigNodeBuilder
 import me.zeroeightsix.fiber.builder.ConfigValueBuilder
 import me.zeroeightsix.fiber.builder.constraint.AbstractConstraintsBuilder
-import me.zeroeightsix.fiber.builder.constraint.CompositeConstraintBuilder
+import me.zeroeightsix.fiber.builder.constraint.CompositeConstraintsBuilder
 import me.zeroeightsix.fiber.builder.constraint.ConstraintsBuilder
 import me.zeroeightsix.fiber.constraint.CompositeType
 import me.zeroeightsix.fiber.tree.ConfigNode
 import me.zeroeightsix.fiber.tree.ConfigValue
-import me.zeroeightsix.fiber.tree.Node
 
-// The reason we don't use the same builder/dsl pattern for name, comment, serialisation is because we want to set the parent of ConfigValues created inside the dsl.
-// If we were to use a builder pattern, we wouldn't have an instance of ConfigNode to use in `withParent` in ConfigNode#value{}
-fun node(name: String? = null, comment: String? = null, serializeSeparately: Boolean = false, builder: (@FiberDslMarker ConfigNode).() -> Unit): ConfigNode {
-    return ConfigNode(name, comment, serializeSeparately)
+fun rootNode(builder: (@FiberDslMarker ConfigNodeBuilder).() -> Unit): ConfigNode {
+    return ConfigNodeBuilder()
         .apply(builder)
+        .build()
+}
+
+fun ConfigNodeBuilder.node(name: String, builder: (@FiberDslMarker ConfigNodeBuilder).() -> Unit): ConfigNode {
+    return fork(name)
+        .apply(builder)
+        .build()
+}
+
+fun ConfigNodeBuilder.comment(lambda: () -> String): ConfigNodeBuilder {
+    return withComment(lambda())
+}
+
+fun ConfigNodeBuilder.serializeSeparately(lambda: () -> Boolean): ConfigNodeBuilder {
+    return withSeparateSerialization(lambda())
+}
+
+fun ConfigNodeBuilder.serializeSeparately(): ConfigNodeBuilder {
+    return serializeSeparately { true }
 }
 
 // Values
 
-inline fun <reified E, reified T: Collection<E>> ConfigNode.aggregate(builder: (@FiberDslMarker ConfigValueBuilder<T, *>).() -> Unit): ConfigValue<T> {
-    return ConfigValueBuilder.aggregate(T::class.java, E::class.java)
-        .withParent(this)
+inline fun <reified E, reified T: Collection<E>> ConfigNodeBuilder.aggregate(name: String, defaultValue: T, builder: (@FiberDslMarker ConfigValueBuilder<T>).() -> Unit): ConfigValue<T> {
+    return beginAggregateValue(name, defaultValue, E::class.java)
         .apply(builder)
         .build()
 }
@@ -28,9 +44,8 @@ inline fun <reified E, reified T: Collection<E>> ConfigNode.aggregate(builder: (
 /**
  * @see ConfigValueBuilder.scalar
  */
-inline fun <reified T> ConfigNode.scalar(builder: (@FiberDslMarker ConfigValueBuilder<T, *>).() -> Unit): ConfigValue<T> {
-    return ConfigValueBuilder.scalar(T::class.java)
-        .withParent(this)
+inline fun <reified T> ConfigNodeBuilder.scalar(name: String, builder: (@FiberDslMarker ConfigValueBuilder<T>).() -> Unit): ConfigValue<T> {
+    return beginValue(name, T::class.java)
         .apply(builder)
         .build()
 }
@@ -38,28 +53,28 @@ inline fun <reified T> ConfigNode.scalar(builder: (@FiberDslMarker ConfigValueBu
 /**
  * @see ConfigValueBuilder.withName
  */
-fun <T> ConfigValueBuilder<T, *>.name(lambda: () -> String) {
+fun <T> ConfigValueBuilder<T>.name(lambda: () -> String) {
     withName(lambda())
 }
 
 /**
  * @see ConfigValueBuilder.withComment
  */
-fun <T> ConfigValueBuilder<T, *>.comment(lambda: () -> String) {
+fun <T> ConfigValueBuilder<T>.comment(lambda: () -> String) {
     withComment(lambda())
 }
 
 /**
  * @see ConfigValueBuilder.withListener
  */
-fun <T> ConfigValueBuilder<T, *>.listener(lambda: (T, T) -> Unit) {
+fun <T> ConfigValueBuilder<T>.listener(lambda: (T, T) -> Unit) {
     withListener(lambda)
 }
 
 /**
  * @see ConfigValueBuilder.withListener
  */
-fun <T> ConfigValueBuilder<T, *>.listener(lambda: (T) -> Unit) {
+fun <T> ConfigValueBuilder<T>.listener(lambda: (T) -> Unit) {
     withListener { _, value ->
         lambda(value)
     }
@@ -68,29 +83,22 @@ fun <T> ConfigValueBuilder<T, *>.listener(lambda: (T) -> Unit) {
 /**
  * @see ConfigValueBuilder.withDefaultValue
  */
-fun <T> ConfigValueBuilder<T, *>.defaultValue(lambda: () -> T) {
+fun <T> ConfigValueBuilder<T>.defaultValue(lambda: () -> T) {
     withDefaultValue(lambda())
-}
-
-/**
- * @see ConfigValueBuilder.withParent
- */
-fun <T> ConfigValueBuilder<T, *>.parent(lambda: () -> Node) {
-    withParent(lambda())
 }
 
 /**
  * @see ConfigValueBuilder.final
  */
-fun <T> ConfigValueBuilder<T, *>.final() {
-    final(true)
+fun <T> ConfigValueBuilder<T>.final() {
+    withFinality(true)
 }
 
 /**
  * @see ConfigValueBuilder.setFinal
  */
-fun <T> ConfigValueBuilder<T, *>.final(final: Boolean) {
-    setFinal(final)
+fun <T> ConfigValueBuilder<T>.final(final: Boolean) {
+    withFinality(final)
 }
 
 //// Generic constraints
@@ -98,10 +106,10 @@ fun <T> ConfigValueBuilder<T, *>.final(final: Boolean) {
 /**
  * @see ConfigValueBuilder.constraints
  */
-fun <T> ConfigValueBuilder<T, *>.constrained(builder: (@FiberDslMarker ConstraintsBuilder<*, T, *>).() -> Unit) {
-    constraints()
+fun <T> ConfigValueBuilder<T>.constrained(builder: (@FiberDslMarker ConstraintsBuilder<T>).() -> Unit) {
+    beginConstraints()
         .apply(builder)
-        .finish()
+        .finishConstraints()
 }
 
 // Numerical constraints
@@ -109,46 +117,46 @@ fun <T> ConfigValueBuilder<T, *>.constrained(builder: (@FiberDslMarker Constrain
 /**
  * @see ConstraintsBuilder.atLeast
  */
-fun <T: Number> AbstractConstraintsBuilder<*, T, T, *>.atLeast(lambda: () -> T) {
+fun <T: Number> AbstractConstraintsBuilder<*, T, T>.atLeast(lambda: () -> T) {
     atLeast(lambda())
 }
 
 /**
  * @see ConstraintsBuilder.atMost
  */
-fun <T: Number> AbstractConstraintsBuilder<*, T, T, *>.atMost(lambda: () -> T) {
+fun <T: Number> AbstractConstraintsBuilder<*, T, T>.atMost(lambda: () -> T) {
     atMost(lambda())
 }
 
 // Char sequence constraints
 
-fun <T: CharSequence> AbstractConstraintsBuilder<*, T, T, *>.minLength(lambda: () -> Int) {
+fun <T: CharSequence> AbstractConstraintsBuilder<*, T, T>.minLength(lambda: () -> Int) {
     minLength(lambda())
 }
 
-fun <T: CharSequence> AbstractConstraintsBuilder<*, T, T, *>.maxLength(lambda: () -> Int) {
+fun <T: CharSequence> AbstractConstraintsBuilder<*, T, T>.maxLength(lambda: () -> Int) {
     maxLength(lambda())
 }
 
-fun <T: CharSequence> AbstractConstraintsBuilder<*, T, T, *>.matchesRegex(lambda: () -> String) {
+fun <T: CharSequence> AbstractConstraintsBuilder<*, T, T>.matchesRegex(lambda: () -> String) {
     regex(lambda())
 }
 
 // Aggregate constraints
 
-fun <T: Collection<*>> AbstractConstraintsBuilder<*, T, T, *>.minCollectionSize(lambda: () -> Int) {
+fun <T: Collection<*>> AbstractConstraintsBuilder<*, T, T>.minCollectionSize(lambda: () -> Int) {
     minLength(lambda())
 }
 
-fun <T: Collection<*>> AbstractConstraintsBuilder<*, T, T, *>.maxCollectionSize(lambda: () -> Int) {
+fun <T: Collection<*>> AbstractConstraintsBuilder<*, T, T>.maxCollectionSize(lambda: () -> Int) {
     maxLength(lambda())
 }
 
-fun AbstractConstraintsBuilder<*, Array<*>, Array<*>, *>.minArrayLength(lambda: () -> Int) {
+fun AbstractConstraintsBuilder<*, Array<*>, Array<*>>.minArrayLength(lambda: () -> Int) {
     minLength(lambda())
 }
 
-fun AbstractConstraintsBuilder<*, Array<*>, Array<*>, *>.maxArrayLength(lambda: () -> Int) {
+fun AbstractConstraintsBuilder<*, Array<*>, Array<*>>.maxArrayLength(lambda: () -> Int) {
     maxLength(lambda())
 }
 
@@ -157,19 +165,19 @@ fun AbstractConstraintsBuilder<*, Array<*>, Array<*>, *>.maxArrayLength(lambda: 
 /**
  * @see ConstraintsBuilder.composite
  */
-fun <T> ConstraintsBuilder<*, T, *>.composite(type: CompositeType, lambda: (@FiberDslMarker CompositeConstraintBuilder<*, T>).() -> Unit) {
+fun <T> ConstraintsBuilder<T>.composite(type: CompositeType, lambda: (@FiberDslMarker CompositeConstraintsBuilder<*, T>).() -> Unit) {
     composite(type)
         .apply(lambda)
         .finishComposite()
 }
 
-fun <T> ConstraintsBuilder<*, T, *>.and(lambda: (@FiberDslMarker CompositeConstraintBuilder<*, T>).() -> Unit) =
+fun <T> ConstraintsBuilder<T>.and(lambda: (@FiberDslMarker CompositeConstraintsBuilder<*, T>).() -> Unit) =
     composite(CompositeType.AND, lambda)
 
-fun <T> ConstraintsBuilder<*, T, *>.or(lambda: (@FiberDslMarker CompositeConstraintBuilder<*, T>).() -> Unit) =
+fun <T> ConstraintsBuilder<T>.or(lambda: (@FiberDslMarker CompositeConstraintsBuilder<*, T>).() -> Unit) =
     composite(CompositeType.OR, lambda)
 
-fun <T> ConstraintsBuilder<*, T, *>.invert(lambda: (@FiberDslMarker CompositeConstraintBuilder<*, T>).() -> Unit) =
+fun <T> ConstraintsBuilder<T>.invert(lambda: (@FiberDslMarker CompositeConstraintsBuilder<*, T>).() -> Unit) =
     composite(CompositeType.INVERT, lambda)
 
 // The all-mighty dsl marker

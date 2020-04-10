@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'me.zeroeightsix'
-version '1.1.0'
+version project.fiber_version
 
 def ENV = System.getenv()
 version = version + "-" + (ENV.BUILD_NUMBER ? ENV.BUILD_NUMBER : "local")
@@ -18,8 +18,8 @@ repositories {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-    compileOnly "me.zeroeightsix:fiber:0.12.1-SNAPSHOT"
-    testImplementation "me.zeroeightsix:fiber:0.12.1-SNAPSHOT"
+    compileOnly "me.zeroeightsix:fiber:${project.fiber_version}"
+    testImplementation "me.zeroeightsix:fiber:${project.fiber_version}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.6.0"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.6.0"
 }
